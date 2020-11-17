@@ -31,6 +31,9 @@ mongoose.connect(db_url,{
     console.log("Connect failed");
 });
 
+// Passport config
+require("./config/passport")(passport);
+
 // Passport middleware
 app.use(passport.initialize());
 
