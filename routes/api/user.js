@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt =  require('bcryptjs');
 const passport = require('passport');
 const auth = require("../auth");
-
+const { log } = console;
 // Validation
 const registerValidation = require('../../validation/register');
 const loginValidation = require('../../validation/login');
@@ -83,6 +83,7 @@ router.post('/login',(req,res)=>{
                     },
                     (err,token) =>{
                         res.json({
+                            username: user.username,
                             success:true,
                             token: "Bearer " + token
                         });
@@ -97,6 +98,41 @@ router.post('/login',(req,res)=>{
         });
         //res.send(res.json(user));
     });
+});
+
+router.get('/user', auth.required, function (req, res, next) {
+    User.findById(req.payload.id)
+        .then(function (user) {
+            if (!user) { 
+                return res.sendStatus(401); 
+            }
+            return res.json({ success: true, user });
+    }).catch(next);
+});
+  
+router.put('/user', auth.required, function (req, res, next) {
+    User.findById(req.payload.id)
+        .then(function (user) {
+            if (!user) { 
+                return res.sendStatus(401); 
+            }
+            log(user);
+            let favorites = user.favorites || [];
+            if (favorites.includes(req.body.favorite)) {
+                return res.json({ 
+                    success: false, 
+                    message: "Đã có trong danh sách yêu thích của bạn!" 
+                });
+            }
+            // only update fields 
+            if (typeof req.body.favorite !== 'undefined') {
+                favorites = [...favorites, req.body.favorite];
+                user.favorites = favorites;
+            }
+                return user.save().then(function () {
+                    return res.json({ success: true, user });
+            });
+        }).catch(next);
 });
 
 
