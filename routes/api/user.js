@@ -84,7 +84,7 @@ router.post('/login',(req,res)=>{
                     (err,token) =>{
                         res.json({
                             username: user.username,
-                            success:true,
+                            isAuthenticated: true,
                             token: "Bearer " + token
                         });
                     }
@@ -135,6 +135,32 @@ router.put('/user', auth.required, function (req, res, next) {
         }).catch(next);
 });
 
+router.delete('/user', auth.required, function (req, res, next) {
+    User.findById(req.payload.id)
+        .then(function (user) {
+            if (!user) { 
+                return res.sendStatus(401); 
+            }
+            log(user);
+
+            let favorites = user.favorites;
+            
+            if (favorites.includes(req.body.favorite)) {
+                return res.json({ 
+                    success: false, 
+                    message: "Đã có trong danh sách yêu thích của bạn!" 
+                });
+            }
+            // only update fields 
+            if (typeof req.body.favorite !== 'undefined') {
+                favorites = [...favorites, req.body.favorite];
+                user.favorites = favorites;
+            }
+                return user.save().then(function () {
+                    return res.json({ success: true, user });
+            });
+        }).catch(next);
+});
 
 
 module.exports = router;
