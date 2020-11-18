@@ -87,6 +87,7 @@ router.post('/login',(req,res)=>{
                             isAuthenticated: true,
                             token: "Bearer " + token
                         });
+                        res.cookie('access_token', token, {httpOnly: true, sameSite: true});
                     }
                 );
             }
@@ -145,7 +146,7 @@ router.delete('/user', auth.required, function (req, res, next) {
 
             let favorites = user.favorites;
             
-            if (favorites.includes(req.body.favorite)) {
+            if (!favorites.includes(req.body.favorite)) {
                 return res.json({ 
                     success: false, 
                     message: "Đã có trong danh sách yêu thích của bạn!" 
