@@ -5,11 +5,13 @@ const passport =  require('passport');
 const users = require("./routes/api/user");
 const { use } = require('passport');
 const { log } = console;
+const Cors = require('cors');
 
 // App Config
 const port = process.env.PORT || 8001;
 const app = express();
 const db_url = require('./config/keys').databaseURL;
+app.use(Cors());
 
 // Bodyparser middleware
 app.use(
