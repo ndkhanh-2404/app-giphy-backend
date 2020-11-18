@@ -83,11 +83,13 @@ router.post('/login',(req,res)=>{
                     },
                     (err,token) =>{
                         res.json({
+                            id: user._id,
                             username: user.username,
+                            date : user.date,
                             isAuthenticated: true,
                             token: "Bearer " + token
                         });
-                        res.cookie('access_token', token, {httpOnly: true, sameSite: true});
+                        
                     }
                 );
             }
@@ -143,19 +145,24 @@ router.delete('/user', auth.required, function (req, res, next) {
                 return res.sendStatus(401); 
             }
             log(user);
-
+            if(user.favorite == []){
+                return res.json({ 
+                    success: false, 
+                    message: "Bạn chưa thích gì?" 
+                });
+            }
             let favorites = user.favorites;
             
             if (!favorites.includes(req.body.favorite)) {
                 return res.json({ 
                     success: false, 
-                    message: "Đã có trong danh sách yêu thích của bạn!" 
+                    message: "Bạn chưa thích Giphy này!!!" 
                 });
             }
             // only update fields 
             if (typeof req.body.favorite !== 'undefined') {
-                favorites = [...favorites, req.body.favorite];
-                user.favorites = favorites;
+                const new_favorites = favorites.filter(item => item !== req.body.favorite);
+                user.favorites = new_favorites;
             }
                 return user.save().then(function () {
                     return res.json({ success: true, user });
