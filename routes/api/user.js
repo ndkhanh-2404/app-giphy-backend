@@ -103,23 +103,23 @@ router.post('/login',(req,res)=>{
     });
 });
 
-router.get('/user', auth.required, function (req, res, next) {
-    User.findById(req.payload.id)
-        .then(function (user) {
-            if (!user) { 
-                return res.sendStatus(401); 
-            }
-            return res.json({ success: true, user });
+// Favourites list of user
+router.post('/user', function(req,res,next){
+    User.findById(req.body.id).then(user => {
+        if(!user){
+            return res.status(401).json({ usernotfound: "User not found"});
+        }
+        return res.json({ success: true, favorites: user.favorites || [] });
     }).catch(next);
 });
-  
-router.put('/user', auth.required, function (req, res, next) {
-    User.findById(req.payload.id)
+
+// Add favourite to user favourites list
+router.post('/user/add',function(req,res,next){
+    User.findById(req.body.id)
         .then(function (user) {
             if (!user) { 
-                return res.sendStatus(401); 
+                return res.status(401).json({ usernotfound: "User not found"}); 
             }
-            log(user);
             let favorites = user.favorites || [];
             if (favorites.includes(req.body.favorite)) {
                 return res.json({ 
@@ -138,19 +138,14 @@ router.put('/user', auth.required, function (req, res, next) {
         }).catch(next);
 });
 
-router.delete('/user', auth.required, function (req, res, next) {
-    User.findById(req.payload.id)
+// Delete favorite from user favorite list
+router.post('/user/delete', function (req, res, next) {
+    User.findById(req.body.id)
         .then(function (user) {
             if (!user) { 
                 return res.sendStatus(401); 
             }
-            log(user);
-            if(user.favorite == []){
-                return res.json({ 
-                    success: false, 
-                    message: "Bạn chưa thích gì?" 
-                });
-            }
+            
             let favorites = user.favorites;
             
             if (!favorites.includes(req.body.favorite)) {
@@ -169,6 +164,73 @@ router.delete('/user', auth.required, function (req, res, next) {
             });
         }).catch(next);
 });
+
+// router.get('/user', auth.required, function (req, res, next) {
+//     User.findById(req.payload.id)
+//         .then(function (user) {
+//             if (!user) { 
+//                 return res.sendStatus(401); 
+//             }
+//             return res.json({ success: true, user });
+//     }).catch(next);
+// });
+  
+// router.put('/user', auth.required, function (req, res, next) {
+//     User.findById(req.payload.id)
+//         .then(function (user) {
+//             if (!user) { 
+//                 return res.sendStatus(401); 
+//             }
+//             log(user);
+//             let favorites = user.favorites || [];
+//             if (favorites.includes(req.body.favorite)) {
+//                 return res.json({ 
+//                     success: false, 
+//                     message: "Đã có trong danh sách yêu thích của bạn!" 
+//                 });
+//             }
+//             // only update fields 
+//             if (typeof req.body.favorite !== 'undefined') {
+//                 favorites = [...favorites, req.body.favorite];
+//                 user.favorites = favorites;
+//             }
+//                 return user.save().then(function () {
+//                     return res.json({ success: true, user });
+//             });
+//         }).catch(next);
+// });
+
+// router.delete('/user', auth.required, function (req, res, next) {
+//     User.findById(req.payload.id)
+//         .then(function (user) {
+//             if (!user) { 
+//                 return res.sendStatus(401); 
+//             }
+//             log(user);
+//             if(user.favorite == []){
+//                 return res.json({ 
+//                     success: false, 
+//                     message: "Bạn chưa thích gì?" 
+//                 });
+//             }
+//             let favorites = user.favorites;
+            
+//             if (!favorites.includes(req.body.favorite)) {
+//                 return res.json({ 
+//                     success: false, 
+//                     message: "Bạn chưa thích Giphy này!!!" 
+//                 });
+//             }
+//             // only update fields 
+//             if (typeof req.body.favorite !== 'undefined') {
+//                 const new_favorites = favorites.filter(item => item !== req.body.favorite);
+//                 user.favorites = new_favorites;
+//             }
+//                 return user.save().then(function () {
+//                     return res.json({ success: true, user });
+//             });
+//         }).catch(next);
+// });
 
 
 module.exports = router;
