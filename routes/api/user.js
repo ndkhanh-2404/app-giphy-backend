@@ -105,7 +105,7 @@ router.post('/login',(req,res)=>{
 
 // Favourites list of user
 router.post('/user', function(req,res,next){
-    User.findById(req.body.id).then(user => {
+    User.findById(req.body.user_id).then(user => {
         if(!user){
             return res.status(401).json({ usernotfound: "User not found"});
         }
@@ -115,7 +115,7 @@ router.post('/user', function(req,res,next){
 
 // Add favourite to user favourites list
 router.post('/user/add',function(req,res,next){
-    User.findById(req.body.id)
+    User.findById(req.body.user_id)
         .then(function (user) {
             if (!user) { 
                 return res.status(401).json({ usernotfound: "User not found"}); 
@@ -140,7 +140,7 @@ router.post('/user/add',function(req,res,next){
 
 // Delete favorite from user favorite list
 router.post('/user/delete', function (req, res, next) {
-    User.findById(req.body.id)
+    User.findById(req.body.user_id)
         .then(function (user) {
             if (!user) { 
                 return res.sendStatus(401); 
