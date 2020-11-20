@@ -1,6 +1,5 @@
 const router = require("express").Router();
-const jwt = require("jsonwebtoken");
-const bcrypt = require("bcryptjs");
+const JWT = require("jsonwebtoken");
 const passport = require("passport");
 const passportConfig = require("../../config/passport");
 // const auth = require("../auth");
@@ -15,7 +14,7 @@ const keys = require("../../config/keys");
 
 //create sign token
 const signToken = (userID) => {
-  return jwt.sign(
+  return JWT.sign(
     {
       iss: "KeiTCoder",
       sub: userID,
@@ -27,38 +26,21 @@ const signToken = (userID) => {
 
 // router POST api/users/register
 //Register users
-router.post("/register", async (req, res) => {
-  // lets validate the data before we a user
-  const { errors, isValid } = registerValidation(req.body);
-  if (!isValid) {
-    return res.status(400).json(errors);
-  }
-
-  //Checking if the user is already in the database
-  const userExist = await User.findOne({ username: req.body.username });
-  if (userExist) {
-    return res.status(400).json({ username: "Username already exists" });
-  }
-
-  User.findOne({ username: req.body.username }).then((user) => {
-    if (user) {
-      return res.status(400).json({ username: "Username already exists" });
-    } else {
-      const newUser = new User({
-        username: req.body.username,
-        password: req.body.password,
-      });
-
-      // Hash password before saving in database
-      bcrypt.genSalt(10, (err, salt) => {
-        bcrypt.hash(newUser.password, salt, (err, hash) => {
-          if (err) throw err;
-          newUser.password = hash;
-          newUser
-            .save()
-            .then((user) => res.json(user))
-            .catch((err) => console.log(err));
-        });
+router.post("/register", (req, res) => {
+  const { username, password } = req.body;
+  User.findOne({ username }, (err, user) => {
+    if (err)
+      res.status(500).json({ error: "Error has occured", success: false });
+    if (user)
+      res
+        .status(400)
+        .json({ error: "Username is already taken", success: false });
+    else {
+      const newUser = new User({ username, password });
+      newUser.save((err) => {
+        if (err)
+          res.status(500).json({ error: "Error has occured", success: false });
+        else res.status(201).json({ user: newUser, success: true });
       });
     }
   });
