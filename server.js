@@ -10,7 +10,7 @@ const Cors = require("cors");
 const port = process.env.PORT || 8001;
 const app = express();
 const db_url = require("./config/keys").databaseURL;
-app.use(Cors());
+app.use(Cors({ credentials: true }));
 app.use(cookieParser());
 
 // Bodyparser middleware
