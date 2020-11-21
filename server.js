@@ -5,6 +5,7 @@ const cookieParser = require("cookie-parser");
 const users = require("./routes/api/user");
 const { log } = console;
 const Cors = require("cors");
+const passport = require("passport");
 
 // App Config
 const port = process.env.PORT || 8001;
@@ -20,6 +21,22 @@ app.use(
   })
 );
 app.use(body_parser.json());
+
+app.use(function (req, res, next) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "X-Requested-With,content-type, Authorization"
+  );
+  next();
+});
+
+// Passport middleware
+app.use(passport.initialize());
+
+// Passport config
+require("./config/passport")(passport);
 
 // Database Config
 mongoose

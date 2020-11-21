@@ -1,32 +1,27 @@
 const router = require("express").Router();
-const JWT = require("jsonwebtoken");
+const jwt = require("jsonwebtoken");
 const passport = require("passport");
-const passportConfig = require("../../config/passport");
-// const auth = require("../auth");
+const bcrypt = require("bcryptjs");
+const auth = require("../auth");
 const { log } = console;
+const keys = require("../../config/keys");
 // Validation
 const registerValidation = require("../../validation/register");
 const loginValidation = require("../../validation/login");
 
 //User model
 const User = require("../../models/User");
-const keys = require("../../config/keys");
-
-//create sign token
-const signToken = (userID) => {
-  return JWT.sign(
-    {
-      iss: "KeiTCoder",
-      sub: userID,
-    },
-    "KeiTCoder",
-    { expiresIn: "1h" }
-  );
-};
 
 // router POST api/users/register
 //Register users
 router.post("/register", (req, res) => {
+  const { errors, isValid } = validateRegisterInput(req.body);
+
+  // Check validation
+  if (!isValid) {
+    return res.status(400).json(errors);
+  }
+
   const { username, password } = req.body;
   User.findOne({ username }, (err, user) => {
     if (err)
@@ -48,125 +43,128 @@ router.post("/register", (req, res) => {
 
 //router POST api/users/login
 //Login users
-router.post(
-  "/login",
-  passport.authenticate("local", { session: false }),
-  (req, res) => {
-    if (req.isAuthenticated()) {
-      const { _id, username } = req.user;
-      const token = signToken(_id);
-      res.cookie("access_token", token, { httpOnly: true, sameSite: true });
-      res.status(200).json({
-        isAuthenticated: true,
-        user: { _id, username },
-        token: "Bearer " + token,
-      });
-    }
-  }
-);
+router.post("/login", (req, res) => {
+  // Form validation
 
-//router POST api/users/logout
-//Logout users
-router.get(
-  "/logout",
-  passport.authenticate("jwt", { session: false }),
-  (req, res) => {
-    res.clearCookie("access_token");
-    res.json({ user: { id: "", username: "" }, success: true });
+  const { errors, isValid } = loginValidation(req.body);
+
+  // Check validation
+  if (!isValid) {
+    return res.status(400).json(errors);
   }
-);
+
+  const email = req.body.email;
+  const password = req.body.password;
+
+  // Find user by email
+  User.findOne({ email }).then((user) => {
+    // Check if user exists
+    if (!user) {
+      return res.status(404).json({ emailnotfound: "Email not found" });
+    }
+
+    // Check password
+    bcrypt.compare(password, user.password).then((isMatch) => {
+      if (isMatch) {
+        // User matched
+        // Create JWT Payload
+        const payload = {
+          id: user.id,
+          username: user.username,
+        };
+
+        // Sign token
+        jwt.sign(
+          payload,
+          keys.secretOrKey,
+          {
+            expiresIn: 31556926, // 1 year in seconds
+          },
+          (err, token) => {
+            res.json({
+              success: true,
+              token: "Bearer " + token,
+            });
+          }
+        );
+      } else {
+        return res
+          .status(400)
+          .json({ passwordincorrect: "Password incorrect" });
+      }
+    });
+  });
+});
 
 // Favourites list of user
-router.get(
-  "/user",
-  passport.authenticate("jwt", { session: false }),
-  (req, res, next) => {
-    User.findById(req.user._id)
-      .then((user) => {
-        if (!user) {
-          return res.status(401).json({ usernotfound: "User not found" });
-        } else {
-          return res
-            .status(200)
-            .json({ favorites: user.favorites, success: true });
-        }
-      })
-      .catch(next);
-  }
-);
+router.get("/user", auth.required, (req, res, next) => {
+  User.findById(req.payload._id)
+    .then((user) => {
+      if (!user) {
+        return res.status(401).json({ usernotfound: "User not found" });
+      } else {
+        return res
+          .status(200)
+          .json({ favorites: user.favorites, success: true });
+      }
+    })
+    .catch(next);
+});
 
 // Add favourite to user favourites list
-router.put(
-  "/user",
-  passport.authenticate("jwt", { session: false }),
-  (req, res, next) => {
-    User.findById(req.user._id)
-      .then((user) => {
-        if (!user) {
-          return res.status(401).json({ usernotfound: "User not found" });
-        }
-        let favorites = user.favorites || [];
-        if (favorites.includes(req.body.favorite)) {
-          return res.json({
-            success: false,
-            message: "Đã có trong danh sách yêu thích của bạn!",
-          });
-        }
-        // only update fields
-        if (typeof req.body.favorite !== "undefined") {
-          favorites = [...favorites, req.body.favorite];
-          user.favorites = favorites;
-        }
-        return user.save().then(function () {
-          return res.json({ success: true, user });
+router.put("/user", auth.required, (req, res, next) => {
+  User.findById(req.payload._id)
+    .then((user) => {
+      if (!user) {
+        return res.status(401).json({ usernotfound: "User not found" });
+      }
+      let favorites = user.favorites || [];
+      if (favorites.includes(req.body.favorite)) {
+        return res.json({
+          success: false,
+          message: "Đã có trong danh sách yêu thích của bạn!",
         });
-      })
-      .catch(next);
-  }
-);
+      }
+      // only update fields
+      if (typeof req.body.favorite !== "undefined") {
+        favorites = [...favorites, req.body.favorite];
+        user.favorites = favorites;
+      }
+      return user.save().then(function () {
+        return res.json({ success: true, user });
+      });
+    })
+    .catch(next);
+});
 
 // Delete favorite from user favorite list
-router.delete(
-  "/user",
-  passport.authenticate("jwt", { session: false }),
-  (req, res, next) => {
-    User.findById(req.user._id)
-      .then((user) => {
-        if (!user) {
-          return res.sendStatus(401);
-        }
+router.delete("/user", auth.required, (req, res, next) => {
+  User.findById(req.user._id)
+    .then((user) => {
+      if (!user) {
+        return res.sendStatus(401);
+      }
 
-        let favorites = user.favorites;
+      let favorites = user.favorites;
 
-        if (!favorites.includes(req.body.favorite)) {
-          return res.json({
-            success: false,
-            message: "Bạn chưa thích Giphy này!!!",
-          });
-        }
-        // only update fields
-        if (typeof req.body.favorite !== "undefined") {
-          const new_favorites = favorites.filter(
-            (item) => item !== req.body.favorite
-          );
-          user.favorites = new_favorites;
-        }
-        return user.save().then(function () {
-          return res.json({ success: true, user });
+      if (!favorites.includes(req.body.favorite)) {
+        return res.json({
+          success: false,
+          message: "Bạn chưa thích Giphy này!!!",
         });
-      })
-      .catch(next);
-  }
-);
-
-// User is authenticated
-router.get(
-  "/authenticated",
-  passport.authenticate("jwt", { session: false }),
-  (req, res) => {
-    const { _id, username } = req.user;
-    res.status(200).json({ isAuthenticated: true, user: { _id, username } });
-  }
-);
+      }
+      // only update fields
+      if (typeof req.body.favorite !== "undefined") {
+        const new_favorites = favorites.filter(
+          (item) => item !== req.body.favorite
+        );
+        user.favorites = new_favorites;
+      }
+      return user.save().then(function () {
+        return res.json({ success: true, user });
+      });
+    })
+    .catch(next);
+});
 
 module.exports = router;
