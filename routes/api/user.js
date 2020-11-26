@@ -100,7 +100,7 @@ router.post("/login", (req, res) => {
 
 // Favourites list of user
 router.get("/user", auth.required, (req, res, next) => {
-  User.findById(req.payload._id)
+  User.findById(req.payload.id)
     .then((user) => {
       if (!user) {
         return res.status(401).json({ usernotfound: "User not found" });
@@ -115,7 +115,7 @@ router.get("/user", auth.required, (req, res, next) => {
 
 // Add favourite to user favourites list
 router.put("/user", auth.required, (req, res, next) => {
-  User.findById(req.payload._id)
+  User.findById(req.payload.id)
     .then((user) => {
       if (!user) {
         return res.status(401).json({ usernotfound: "User not found" });
@@ -141,7 +141,7 @@ router.put("/user", auth.required, (req, res, next) => {
 
 // Delete favorite from user favorite list
 router.delete("/user", auth.required, (req, res, next) => {
-  User.findById(req.user._id)
+  User.findById(req.payload.id)
     .then((user) => {
       if (!user) {
         return res.sendStatus(401);
