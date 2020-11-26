@@ -2,7 +2,7 @@ const router = require("express").Router();
 const jwt = require("jsonwebtoken");
 const passport = require("passport");
 const bcrypt = require("bcryptjs");
-const auth = require("../auth");
+const utils = require("../../utils/utils.js");
 const { log } = console;
 const keys = require("../../config/keys");
 // Validation
@@ -71,7 +71,7 @@ router.post("/login", (req, res) => {
         const payload = {
           id: user.id,
           username: user.username,
-          favorites: user.favorites,
+          //favorites: user.favorites,
         };
 
         // Sign token
@@ -85,7 +85,7 @@ router.post("/login", (req, res) => {
             res.json({
               user: payload,
               isAuthenticated: true,
-              token: "Bearer " + token,
+              token: token,
             });
           }
         );
@@ -98,9 +98,37 @@ router.post("/login", (req, res) => {
   });
 });
 
+const TokenCheckMiddleware = async (req, res, next) => {
+  const token =
+    req.body.token || req.query.token || req.headers["x-access-token"];
+  if (token) {
+    try {
+      const decoded = await utils.verifyJwtToken(token, keys.secretOrKey);
+      req.decoded = decoded;
+      next();
+    } catch (err) {
+      console.error(err);
+      return res.status(401).json({
+        message: "Unauthorized access.",
+      });
+    }
+  } else {
+    console.log("null");
+    return res.status(403).send({
+      message: "No token provided.",
+    });
+  }
+};
+
+router.use(TokenCheckMiddleware);
+
+router.post("/checkToken", (req, res) => {
+  return res.json(req.decoded);
+});
+
 // Favourites list of user
-router.get("/user", auth.required, (req, res, next) => {
-  User.findById(req.payload.id)
+router.post("/user", (req, res, next) => {
+  User.findById(req.decoded.id)
     .then((user) => {
       if (!user) {
         return res.status(401).json({ usernotfound: "User not found" });
@@ -114,8 +142,8 @@ router.get("/user", auth.required, (req, res, next) => {
 });
 
 // Add favourite to user favourites list
-router.put("/user", auth.required, (req, res, next) => {
-  User.findById(req.payload.id)
+router.post("/user/add", (req, res, next) => {
+  User.findById(req.decoded.id)
     .then((user) => {
       if (!user) {
         return res.status(401).json({ usernotfound: "User not found" });
@@ -133,15 +161,15 @@ router.put("/user", auth.required, (req, res, next) => {
         user.favorites = favorites;
       }
       return user.save().then(function () {
-        return res.json({ success: true, user });
+        return res.json({ success: true, favorites: user.favorites });
       });
     })
     .catch(next);
 });
 
-// Delete favorite from user favorite list
-router.delete("/user", auth.required, (req, res, next) => {
-  User.findById(req.payload.id)
+// // Delete favorite from user favorite list
+router.post("/user/delete", (req, res, next) => {
+  User.findById(req.decoded.id)
     .then((user) => {
       if (!user) {
         return res.sendStatus(401);
@@ -163,7 +191,7 @@ router.delete("/user", auth.required, (req, res, next) => {
         user.favorites = new_favorites;
       }
       return user.save().then(function () {
-        return res.json({ success: true, user });
+        return res.json({ success: true, favorites: user.favorites });
       });
     })
     .catch(next);
